@@ -49,7 +49,7 @@ Antes de iniciar, certifique-se de que você tenha instalado:
   - ASP.NET e desenvolvimento web
   - Desenvolvimento com Blazor
 
-### ⚙️ Clonando o Repositório
+### Clonando o Repositório
 
 ```bash
 git clone https://github.com/RonaldRonan14/GestaoControleQualidade.git
