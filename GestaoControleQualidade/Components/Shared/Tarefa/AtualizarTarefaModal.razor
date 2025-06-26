@@ -24,6 +24,16 @@
 
                     <div class="mb-3">
                         <label for="@($"data-vencimento-{modalId}")" class="form-label">Data de Vencimento</label>
+                        <InputSelect class="form-control" id="@($"status-tarefa-{modalId}")" @bind-Value="modelo.StatusTarefa" disabled="@modoDetalhes">
+                            <option value="@StatusTarefa.AFazer">A Fazer</option>
+                            <option value="@StatusTarefa.EmProgresso">Em Processo</option>
+                            <option value="@StatusTarefa.Concluido">Concluído</option>
+                        </InputSelect>
+                        <ValidationMessage For="@(() => modelo.StatusTarefa)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="@($"data-vencimento-{modalId}")" class="form-label">Data de Vencimento</label>
                         <InputDate class="form-control" id="@($"data-vencimento-{modalId}")" @bind-Value="modelo.DataVencimento" disabled="@modoDetalhes" />
                         <ValidationMessage For="@(() => modelo.DataVencimento)" />
                     </div>

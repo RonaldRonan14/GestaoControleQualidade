@@ -1,4 +1,5 @@
 ﻿using GestaoControleQualidade.Dominio.Entidades;
+using GestaoControleQualidade.Dominio.Enumerados;
 using GestaoControleQualidade.Infraestrutura.Repositorios;
 
 namespace GestaoControleQualidade.Servico.Servicos;
@@ -30,6 +31,11 @@ public class TarefaServico
     public async Task<Tarefa> AtualizarTarefa(Guid tarefaId, Tarefa tarefa)
     {
         return await _tarefaRepositorio.AtualizarTarefa(tarefaId, tarefa);
+    }
+
+    public async Task<Tarefa> AtualizarStatusTarefa(Guid tarefaId, StatusTarefa statusTarefa)
+    {
+        return await _tarefaRepositorio.AtualizarStatusTarefa(tarefaId, statusTarefa);
     }
 
     public async Task DeletarTarefa(Guid tarefaId)

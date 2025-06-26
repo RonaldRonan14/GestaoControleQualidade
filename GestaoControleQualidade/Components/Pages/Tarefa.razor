@@ -13,7 +13,12 @@
 
     <div class="d-flex gap-3 flex-grow-1">
         @* A Fazer *@
-        <div class="d-flex flex-column w-100 border" style="background-color: #f6f8fa; border-radius: .5rem;">
+        <div class="d-flex flex-column w-100 border drop-zone" 
+             style="background-color: #f6f8fa; border-radius: .5rem;"
+             @ondrop="@((DragEventArgs e) => OnDrop(e, StatusTarefa.AFazer))"
+             @ondragover="@OnDragOver"
+             @ondragover:preventDefault="true"
+             @ondrop:preventDefault="true">
             <h5 class="mb-3 m-2">
                 <i class="bi bi-record2 text-danger"></i>
                 A Fazer
@@ -34,7 +39,12 @@
         </div>
 
         @* Em Progresso *@
-        <div class="d-flex flex-column w-100 border" style="background-color: #f6f8fa; border-radius: .5rem;">
+        <div class="d-flex flex-column w-100 border drop-zone" 
+             style="background-color: #f6f8fa; border-radius: .5rem;"
+             @ondrop="@((DragEventArgs e) => OnDrop(e, StatusTarefa.EmProgresso))"
+             @ondragover="@OnDragOver"
+             @ondragover:preventDefault="true"
+             @ondrop:preventDefault="true">
             <h5 class="mb-3 m-2">
                 <i class="bi bi-record2-fill text-warning"></i>
                 Em Progresso
@@ -55,7 +65,12 @@
         </div>
 
         @* Concluído *@
-        <div class="d-flex flex-column w-100 border" style="background-color: #f6f8fa; border-radius: .5rem;">
+        <div class="d-flex flex-column w-100 border drop-zone" 
+             style="background-color: #f6f8fa; border-radius: .5rem;"
+             @ondrop="@((DragEventArgs e) => OnDrop(e, StatusTarefa.Concluido))"
+             @ondragover="@OnDragOver"
+             @ondragover:preventDefault="true"
+             @ondrop:preventDefault="true">
             <h5 class="mb-3 m-2">
                 <i class="bi bi-record-fill text-success"></i>
                 Concluído
@@ -80,15 +95,36 @@
 <AdicionarTarefaModal @ref="adicionarTarefa" OnTarefaAdicionada="AdicionarTarefaNaLista" />
 <AtualizarTarefaModal @ref="atualizarTarefa" OnTarefaAtualizada="AtualizarTarefaNaLista" />
 
+<style>
+    .drag-item {
+        cursor: grab;
+    }
+    
+    .drag-item:active {
+        cursor: grabbing;
+    }
+    
+    .drag-item.dragging {
+        opacity: 0.5;
+    }
+    
+    .drop-zone.drag-over {
+        background-color: #e3f2fd !important;
+        border: 2px dashed #2196f3 !important;
+    }
+</style>
+
 @code {
     [Inject] private IMapper mapper { get; set; } = default!;
     [Inject] private TarefaServico tarefaServico { get; set; } = default!;
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
 
     private AdicionarTarefaModal? adicionarTarefa;
     private AtualizarTarefaModal? atualizarTarefa;
     private IEnumerable<TarefaDto> todasTarefas = new List<TarefaDto>();
     private IEnumerable<TarefaDto> tarefasFiltradas = new List<TarefaDto>();
     private string filtroTarefa = string.Empty;
+    private Guid? tarefaArrastando = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -193,13 +229,54 @@
         StateHasChanged();
     }
 
+    // Métodos para Drag and Drop
+    private void OnDragStart(DragEventArgs e, Guid tarefaId)
+    {
+        tarefaArrastando = tarefaId;
+        e.DataTransfer.DropEffect = "move";
+    }
+
+    private void OnDragEnd(DragEventArgs e)
+    {
+        tarefaArrastando = null;
+    }
+
+    private void OnDragOver(DragEventArgs e)
+    {
+        // Este método deve estar presente para permitir o drop
+    }
+
+    private async Task OnDrop(DragEventArgs e, StatusTarefa novoStatus)
+    {
+
+        if (tarefaArrastando.HasValue)
+        {
+            var tarefa = todasTarefas.FirstOrDefault(t => t.TarefaId == tarefaArrastando.Value);
+            if (tarefa != null && tarefa.StatusTarefa != novoStatus)
+            {
+                var tarefaAtualizada = await tarefaServico.AtualizarStatusTarefa(tarefa.TarefaId, novoStatus);
+                var tarefaDto = mapper.Map<TarefaDto>(tarefaAtualizada);
+
+                AtualizarTarefaNaLista(tarefaDto);
+            }
+        }
+        
+        tarefaArrastando = null;
+    }
+
     // Método helper para renderizar o card da tarefa
     private RenderFragment RenderTarefaCard(TarefaDto tarefa) => __builder =>
     {
-        <div class="card shadow mx-2">
+        <div class="card shadow mx-2 drag-item @(tarefaArrastando == tarefa.TarefaId ? "dragging" : "")"
+             draggable="true"
+             @ondragstart="@((DragEventArgs e) => OnDragStart(e, tarefa.TarefaId))"
+             @ondragend="@OnDragEnd">
             <div class="card-body">
-                <h5 class="card-title" @onclick='() => ModalAtualizarTarefa(tarefa.TarefaId)'>@tarefa.Titulo</h5>
+                <h5 class="card-title" @onclick='() => ModalAtualizarTarefa(tarefa.TarefaId)' style="cursor: pointer;">@tarefa.Titulo</h5>
                 @RenderDataVencimento(tarefa.DataVencimento)
+                <small class="text-muted">
+                    <i class="bi bi-arrows-move"></i> Segure e arraste para mover
+                </small>
             </div>
         </div>
     };
@@ -212,7 +289,7 @@
             var isVencido = dataVencimento.Value.Date < DateTime.Now.Date;
             var cssClass = isVencido ? "card-text text-danger" : "card-text";
 
-            <p class="@cssClass">
+            <p class="@cssClass mb-1">
                 Vencimento: @dataVencimento.Value.ToString("dd/MM/yyyy")
             </p>
         }

@@ -1,4 +1,5 @@
 ﻿using GestaoControleQualidade.Dominio.Entidades;
+using GestaoControleQualidade.Dominio.Enumerados;
 using GestaoControleQualidade.Infraestrutura.Dados;
 using Microsoft.EntityFrameworkCore;
 
@@ -48,6 +49,22 @@ public class TarefaRepositorio
         tarefaEntidade.StatusTarefa = tarefa.StatusTarefa;
         tarefaEntidade.DataAlteracao = DateTime.Now;
         tarefaEntidade.DataVencimento = tarefa.DataVencimento;
+
+        await _context.SaveChangesAsync();
+
+        return tarefaEntidade;
+    }
+
+    public async Task<Tarefa> AtualizarStatusTarefa(Guid tarefaId, StatusTarefa statusTarefa)
+    {
+        var tarefaEntidade = await _context.Tarefas
+            .FirstOrDefaultAsync(t => t.TarefaId == tarefaId);
+
+        if (tarefaEntidade == null)
+            throw new KeyNotFoundException();
+
+        tarefaEntidade.StatusTarefa = statusTarefa;
+        tarefaEntidade.DataAlteracao = DateTime.Now;
 
         await _context.SaveChangesAsync();
 
