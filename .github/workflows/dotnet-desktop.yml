@@ -1,0 +1,32 @@
+name: Testes Automatizados .NET
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout do Código
+      uses: actions/checkout@v4
+
+    - name: Configurar .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Restaurar dependências
+      run: dotnet restore GestaoControleQualidade.sln
+
+    - name: Construir Solução
+      run: dotnet build GestaoControleQualidade.sln
+
+    - name: Executar Testes
+      run: dotnet test GestaoControleQualidade.sln --no-build --verbosity normal
