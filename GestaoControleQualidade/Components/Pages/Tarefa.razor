@@ -1,0 +1,220 @@
+﻿@page "/tarefa"
+@using GestaoControleQualidade.Apresentacao.Components.Shared.Tarefa
+@using GestaoControleQualidade.Servico.Servicos
+@rendermode InteractiveServer
+
+<section class="h-100 d-flex flex-column container py-3">
+    <form action="/" method="post">
+        <div class="input-group mb-3">
+            <span class="input-group-text" id="basic-addon1"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" placeholder="Tarefa" aria-label="Username" @bind="filtroTarefa" @oninput="FiltrarTarefas">
+        </div>
+    </form>
+
+    <div class="d-flex gap-3 flex-grow-1">
+        @* A Fazer *@
+        <div class="d-flex flex-column w-100 border" style="background-color: #f6f8fa; border-radius: .5rem;">
+            <h5 class="mb-3 m-2">
+                <i class="bi bi-record2 text-danger"></i>
+                A Fazer
+                <span class="bg-secondary-subtle px-2 fs-6" style="border-radius: 1rem;">
+                    @tarefasFiltradas.Count(t => t.StatusTarefa == StatusTarefa.AFazer)
+                </span>
+            </h5>
+            <div class="flex-grow-1 overflow-y-auto d-flex flex-column gap-2">
+                @foreach (var tarefa in tarefasFiltradas.Where(t => t.StatusTarefa == StatusTarefa.AFazer))
+                {
+                    @RenderTarefaCard(tarefa)
+                }
+            </div>
+            <button class="btn" @onclick='() => ModalAdicionarTarefa(StatusTarefa.AFazer)'>
+                <i class="bi bi-plus-lg"></i>
+                Adicionar
+            </button>
+        </div>
+
+        @* Em Progresso *@
+        <div class="d-flex flex-column w-100 border" style="background-color: #f6f8fa; border-radius: .5rem;">
+            <h5 class="mb-3 m-2">
+                <i class="bi bi-record2-fill text-warning"></i>
+                Em Progresso
+                <span class="bg-secondary-subtle px-2 fs-6" style="border-radius: 1rem;">
+                    @tarefasFiltradas.Count(t => t.StatusTarefa == StatusTarefa.EmProgresso)
+                </span>
+            </h5>
+            <div class="flex-grow-1 overflow-y-auto d-flex flex-column gap-2">
+                @foreach (var tarefa in tarefasFiltradas.Where(t => t.StatusTarefa == StatusTarefa.EmProgresso))
+                {
+                    @RenderTarefaCard(tarefa)
+                }
+            </div>
+            <button class="btn" @onclick='() => ModalAdicionarTarefa(StatusTarefa.EmProgresso)'>
+                <i class="bi bi-plus-lg"></i>
+                Adicionar
+            </button>
+        </div>
+
+        @* Concluído *@
+        <div class="d-flex flex-column w-100 border" style="background-color: #f6f8fa; border-radius: .5rem;">
+            <h5 class="mb-3 m-2">
+                <i class="bi bi-record-fill text-success"></i>
+                Concluído
+                <span class="bg-secondary-subtle px-2 fs-6" style="border-radius: 1rem;">
+                    @tarefasFiltradas.Count(t => t.StatusTarefa == StatusTarefa.Concluido)
+                </span>
+            </h5>
+            <div class="flex-grow-1 overflow-y-auto d-flex flex-column gap-2">
+                @foreach (var tarefa in tarefasFiltradas.Where(t => t.StatusTarefa == StatusTarefa.Concluido))
+                {
+                    @RenderTarefaCard(tarefa)
+                }
+            </div>
+            <button class="btn" @onclick='() => ModalAdicionarTarefa(StatusTarefa.Concluido)'>
+                <i class="bi bi-plus-lg"></i>
+                Adicionar
+            </button>
+        </div>
+    </div>
+</section>
+
+<AdicionarTarefaModal @ref="adicionarTarefa" OnTarefaAdicionada="AdicionarTarefaNaLista" />
+<AtualizarTarefaModal @ref="atualizarTarefa" OnTarefaAtualizada="AtualizarTarefaNaLista" />
+
+@code {
+    [Inject] private IMapper mapper { get; set; } = default!;
+    [Inject] private TarefaServico tarefaServico { get; set; } = default!;
+
+    private AdicionarTarefaModal? adicionarTarefa;
+    private AtualizarTarefaModal? atualizarTarefa;
+    private IEnumerable<TarefaDto> todasTarefas = new List<TarefaDto>();
+    private IEnumerable<TarefaDto> tarefasFiltradas = new List<TarefaDto>();
+    private string filtroTarefa = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarTarefas();
+    }
+
+    private async Task CarregarTarefas()
+    {
+        var tarefas = await tarefaServico.ConsultarTarefas();
+        todasTarefas = mapper.Map<IEnumerable<TarefaDto>>(tarefas);
+        tarefasFiltradas = todasTarefas;
+    }
+
+    private void FiltrarTarefas(ChangeEventArgs e)
+    {
+        filtroTarefa = e.Value?.ToString() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(filtroTarefa))
+        {
+            tarefasFiltradas = todasTarefas;
+        }
+        else
+        {
+            tarefasFiltradas = todasTarefas.Where(t =>
+                t.Titulo.Contains(filtroTarefa, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    private void ModalAdicionarTarefa(StatusTarefa status)
+    {
+        adicionarTarefa?.AbrirModal(status);
+    }
+
+    private void ModalAtualizarTarefa(Guid tarefaId)
+    {
+        atualizarTarefa?.AbrirModal(tarefaId);
+    }
+
+    private async Task RecarregarTarefas()
+    {
+        await CarregarTarefas();
+    }
+
+    private void AdicionarTarefaNaLista(TarefaDto novaTarefa)
+    {
+        // Adiciona à lista completa
+        var listaCompleta = todasTarefas.ToList();
+        listaCompleta.Add(novaTarefa);
+        todasTarefas = listaCompleta;
+
+        // Atualiza a lista filtrada se necessário
+        if (string.IsNullOrWhiteSpace(filtroTarefa) ||
+            novaTarefa.Titulo.Contains(filtroTarefa, StringComparison.OrdinalIgnoreCase))
+        {
+            var listaFiltrada = tarefasFiltradas.ToList();
+            listaFiltrada.Add(novaTarefa);
+            tarefasFiltradas = listaFiltrada;
+        }
+
+        StateHasChanged();
+    }
+
+    private void AtualizarTarefaNaLista(TarefaDto tarefaAtualizada)
+    {
+        // Atualiza na lista completa
+        var listaCompleta = todasTarefas.ToList();
+        var indiceCompleta = listaCompleta.FindIndex(t => t.TarefaId == tarefaAtualizada.TarefaId);
+
+        if (indiceCompleta >= 0)
+        {
+            listaCompleta[indiceCompleta] = tarefaAtualizada;
+            todasTarefas = listaCompleta;
+        }
+
+        // Atualiza na lista filtrada
+        var listaFiltrada = tarefasFiltradas.ToList();
+        var indiceFiltrada = listaFiltrada.FindIndex(t => t.TarefaId == tarefaAtualizada.TarefaId);
+
+        if (indiceFiltrada >= 0)
+        {
+            // Se a tarefa existe na lista filtrada, verifica se ainda deve estar lá
+            if (string.IsNullOrWhiteSpace(filtroTarefa) ||
+                tarefaAtualizada.Titulo.Contains(filtroTarefa, StringComparison.OrdinalIgnoreCase))
+            {
+                // Ainda atende ao filtro, então atualiza
+                listaFiltrada[indiceFiltrada] = tarefaAtualizada;
+            }
+            else
+            {
+                // Não atende mais ao filtro, então remove
+                listaFiltrada.RemoveAt(indiceFiltrada);
+            }
+        }
+        else if (string.IsNullOrWhiteSpace(filtroTarefa) ||
+                 tarefaAtualizada.Titulo.Contains(filtroTarefa, StringComparison.OrdinalIgnoreCase))
+        {
+            // A tarefa não estava na lista filtrada, mas agora atende ao filtro
+            listaFiltrada.Add(tarefaAtualizada);
+        }
+
+        tarefasFiltradas = listaFiltrada;
+        StateHasChanged();
+    }
+
+    // Método helper para renderizar o card da tarefa
+    private RenderFragment RenderTarefaCard(TarefaDto tarefa) => __builder =>
+    {
+        <div class="card shadow mx-2">
+            <div class="card-body">
+                <h5 class="card-title" @onclick='() => ModalAtualizarTarefa(tarefa.TarefaId)'>@tarefa.Titulo</h5>
+                @RenderDataVencimento(tarefa.DataVencimento)
+            </div>
+        </div>
+    };
+
+    // Método helper para renderizar a data de vencimento
+    private RenderFragment RenderDataVencimento(DateTime? dataVencimento) => __builder =>
+    {
+        if (dataVencimento.HasValue)
+        {
+            var isVencido = dataVencimento.Value.Date < DateTime.Now.Date;
+            var cssClass = isVencido ? "card-text text-danger" : "card-text";
+
+            <p class="@cssClass">
+                Vencimento: @dataVencimento.Value.ToString("dd/MM/yyyy")
+            </p>
+        }
+    };
+}

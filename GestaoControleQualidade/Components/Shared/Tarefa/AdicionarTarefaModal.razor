@@ -1,0 +1,154 @@
+﻿@using GestaoControleQualidade.Servico.Servicos
+@using GestaoControleQualidade.Servico.Dtos
+@using GestaoControleQualidade.Dominio.Entidades
+@using Microsoft.AspNetCore.Components.Forms
+@rendermode InteractiveServer
+
+<div class="modal fade" id="@modalId" tabindex="-1" aria-labelledby="adicionar-tarefa-label" aria-hidden="true" @ref="modalElement">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="adicionar-tarefa-label">Nova Tarefa</h1>
+                <button type="button" class="btn-close" @onclick="FecharModal" aria-label="Fechar"></button>
+            </div>
+
+            <EditForm Model="@modelo" OnValidSubmit="SalvarTarefa" OnInvalidSubmit="TratarFormularioInvalido">
+                <DataAnnotationsValidator />
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="@($"titulo-{modalId}")" class="form-label">Título <span class="text-danger">*</span></label>
+                        <InputText class="form-control" id="@($"titulo-{modalId}")" @bind-Value="modelo.Titulo" placeholder="Digite o título da tarefa" />
+                        <ValidationMessage For="@(() => modelo.Titulo)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="@($"data-vencimento-{modalId}")" class="form-label">Data de Vencimento</label>
+                        <InputDate class="form-control" id="@($"data-vencimento-{modalId}")" @bind-Value="modelo.DataVencimento" />
+                        <ValidationMessage For="@(() => modelo.DataVencimento)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="@($"descricao-{modalId}")" class="form-label">Descrição</label>
+                        <InputTextArea class="form-control" id="@($"descricao-{modalId}")" rows="3"
+                                       @bind-Value="modelo.Descricao" placeholder="Descreva os detalhes da tarefa">
+                        </InputTextArea>
+                        <ValidationMessage For="@(() => modelo.Descricao)" />
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="FecharModal" disabled="@isProcessing">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary" disabled="@isProcessing">
+                        @if (isProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        Salvar Tarefa
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    #region Parameters e Injeções
+    [Parameter] public EventCallback<TarefaDto> OnTarefaAdicionada { get; set; }
+
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+    [Inject] private IMapper Mapper { get; set; } = default!;
+    [Inject] private TarefaServico TarefaServico { get; set; } = default!;
+    #endregion
+
+    #region Propriedades Privadas
+    private readonly string modalId = $"modal-{Guid.NewGuid():N}";
+    private ElementReference modalElement;
+    private IJSObjectReference? modalInstance;
+    private AdicionarTarefaDto modelo = new();
+    private bool isProcessing = false;
+    private StatusTarefa statusAtual = StatusTarefa.AFazer;
+    #endregion
+
+    #region Métodos Públicos
+    public async Task AbrirModal(StatusTarefa status = StatusTarefa.AFazer)
+    {
+        statusAtual = status;
+        LimparFormulario();
+
+        await InicializarModal();
+        await modalInstance!.InvokeVoidAsync("show");
+    }
+
+    public async Task FecharModal()
+    {
+        if (modalInstance is not null)
+        {
+            await modalInstance.InvokeVoidAsync("hide");
+        }
+    }
+    #endregion
+
+    #region Métodos Privados
+    private async Task InicializarModal()
+    {
+        modalInstance ??= await JSRuntime.InvokeAsync<IJSObjectReference>(
+            "bootstrap.Modal.getOrCreateInstance", modalElement);
+    }
+
+    private void LimparFormulario()
+    {
+        modelo = new AdicionarTarefaDto
+        {
+            StatusTarefa = statusAtual
+        };
+        isProcessing = false;
+    }
+
+    private async Task SalvarTarefa()
+    {
+        if (isProcessing) return;
+
+        try
+        {
+            isProcessing = true;
+            StateHasChanged();
+
+            var tarefa = Mapper.Map<Tarefa>(modelo);
+            var tarefaEntidade = await TarefaServico.AdicionarTarefa(tarefa);
+
+            await NotificarTarefaAdicionada(tarefaEntidade);
+            await FecharModal();
+        }
+        catch (Exception ex)
+        {
+            // TODO: Implementar tratamento de erro adequado
+            // Por exemplo: mostrar toast de erro, log, etc.
+            Console.WriteLine($"Erro ao salvar tarefa: {ex.Message}");
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task NotificarTarefaAdicionada(Tarefa tarefa)
+    {
+        if (OnTarefaAdicionada.HasDelegate)
+        {
+            var tarefaDto = Mapper.Map<TarefaDto>(tarefa);
+
+            await OnTarefaAdicionada.InvokeAsync(tarefaDto);
+        }
+    }
+
+    private void TratarFormularioInvalido()
+    {
+        // Lógica adicional quando o formulário é inválido, se necessário
+        StateHasChanged();
+    }
+    #endregion
+}
