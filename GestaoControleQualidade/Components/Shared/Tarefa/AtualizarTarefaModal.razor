@@ -8,7 +8,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h1 class="modal-title fs-5" id="adicionar-tarefa-label">@(detalhes == true ? "Detalhes da tarefa":"Editar tarefa")</h1>
+                <h1 class="modal-title fs-5" id="adicionar-tarefa-label">@(modoDetalhes == true ? "Detalhes da tarefa":"Editar tarefa")</h1>
                 <button type="button" class="btn-close" @onclick="FecharModal" aria-label="Fechar"></button>
             </div>
 
@@ -18,20 +18,20 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="@($"titulo-{modalId}")" class="form-label">Título <span class="text-danger">*</span></label>
-                        <InputText class="form-control" id="@($"titulo-{modalId}")" @bind-Value="modelo.Titulo" placeholder="Digite o título da tarefa" disabled="@detalhes" />
+                        <InputText class="form-control" id="@($"titulo-{modalId}")" @bind-Value="modelo.Titulo" placeholder="Digite o título da tarefa" disabled="@modoDetalhes" />
                         <ValidationMessage For="@(() => modelo.Titulo)" />
                     </div>
 
                     <div class="mb-3">
                         <label for="@($"data-vencimento-{modalId}")" class="form-label">Data de Vencimento</label>
-                        <InputDate class="form-control" id="@($"data-vencimento-{modalId}")" @bind-Value="modelo.DataVencimento" disabled="@detalhes" />
+                        <InputDate class="form-control" id="@($"data-vencimento-{modalId}")" @bind-Value="modelo.DataVencimento" disabled="@modoDetalhes" />
                         <ValidationMessage For="@(() => modelo.DataVencimento)" />
                     </div>
 
                     <div class="mb-3">
                         <label for="@($"descricao-{modalId}")" class="form-label">Descrição</label>
                         <InputTextArea class="form-control" id="@($"descricao-{modalId}")" rows="3"
-                                       @bind-Value="modelo.Descricao" placeholder="Descreva os detalhes da tarefa" disabled="@detalhes" >
+                                       @bind-Value="modelo.Descricao" placeholder="Descreva os detalhes da tarefa" disabled="@modoDetalhes" >
                         </InputTextArea>
                         <ValidationMessage For="@(() => modelo.Descricao)" />
                     </div>
@@ -39,11 +39,11 @@
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" @onclick="FecharModal" disabled="@isProcessing">
-                        @(detalhes ? "Fechar" : "Cancelar")
+                        @(modoDetalhes ? "Fechar" : "Cancelar")
                     </button>
-                    @if (detalhes)
+                    @if (modoDetalhes)
                     {
-                        <button type="button" class="btn btn-primary" @onclick="() => detalhes = false">
+                        <button type="button" class="btn btn-primary" @onclick="() => modoDetalhes = false">
                             Editar
                         </button>
                     }
@@ -79,7 +79,7 @@
     private AtualizarTarefaDto modelo = new();
     private bool isProcessing = false;
     private Guid tarefaId = Guid.Empty;
-    private bool detalhes = true;
+    private bool modoDetalhes = true;
     #endregion
 
     #region Métodos Públicos
@@ -97,7 +97,7 @@
         if (modalInstance is not null)
         {
             await modalInstance.InvokeVoidAsync("hide");
-            detalhes = true;
+            modoDetalhes = true;
         }
     }
     #endregion
@@ -110,6 +110,7 @@
 
         var tarefa = await TarefaServico.ConsultarTarefaPorId(tarefaId);
         modelo = Mapper.Map<AtualizarTarefaDto>(tarefa);
+        StateHasChanged();
     }
 
     private void LimparFormulario()
@@ -120,7 +121,7 @@
 
     private async Task SalvarTarefa()
     {
-        if (detalhes) return;
+        if (modoDetalhes) return;
         if (isProcessing) return;
 
         try
